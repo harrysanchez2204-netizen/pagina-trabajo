@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Video a Máximo Volumen - Espera 10s</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            text-align: center;
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+        }
+
+        video {
+            width: 100%;
+            border-radius: 10px;
+            background: black;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .start-btn {
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 1.8rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .timer {
+            font-size: 3rem;
+            color: white;
+            font-weight: bold;
+        }
+
+        .message {
+            color: white;
+            font-size: 1.2rem;
+            margin-top: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <video id="miVideo" controls="false" playsinline></video>
+    </div>
+
+    <div id="overlayInicio" class="overlay">
+        <div style="color: white; font-size: 1.5rem; text-align: center;">⚠️ ATENCIÓN ⚠️</div>
+        <div style="color: white; text-align: center; margin-bottom: 20px;">Debes de subir al maximo el volumen</div>
+        <button class="start-btn" id="startBtn">▶ PRESIONA PARA COMENZAR</button>
+        <div style="color: #aaa; font-size: 0.8rem; margin-top: 20px;">Sube el volumen físico de tu dispositivo al máximo</div>
+    </div>
+
+    <div id="overlayEspera" class="overlay hidden">
+        <div class="timer" id="timer">10</div>
+        <div class="message">⏳ Espera a que termine el video...</div>
+        <div class="message" style="font-size: 0.9rem;">🔊 Volumen al máximo</div>
+    </div>
+
+    <script>
+        // Configurar video (ejemplo con un video de prueba de 10 segundos)
+        // Puedes cambiar esta URL por tu propio video
+        const videoURL = "https://files.catbox.moe/gvyjez.mp4";
+        // Este video dura ~15 segundos, pero nosotros lo cortamos a 10s
+        
+        const video = document.getElementById('miVideo');
+        const overlayInicio = document.getElementById('overlayInicio');
+        const overlayEspera = document.getElementById('overlayEspera');
+        const timerSpan = document.getElementById('timer');
+        const startBtn = document.getElementById('startBtn');
+
+        let tiempoRestante = 10;
+        let intervalo;
+        let videoTerminado = false;
+
+        // Configurar volumen máximo
+        video.volume = 1.0;
+        video.loop = false;
+        
+        // Forzar que no se puedan los controles nativos (para que no pause)
+        video.controls = false;
+
+        // Función para iniciar el proceso
+        function iniciarBloqueo() {
+            overlayInicio.classList.add('hidden');
+            overlayEspera.classList.remove('hidden');
+            
+            // Cargar y reproducir video
+            video.src = videoURL;
+            video.load();
+            
+            // Asegurar volumen máximo
+            video.volume = 1.0;
+            
+            // Intentar reproducir (requiere interacción del usuario, ya la tuvo con el botón)
+            const playPromise = video.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    console.log("Video reproduciendo a máximo volumen");
+                }).catch(error => {
+                    console.error("Error al reproducir:", error);
+                    // Fallback: mostrar mensaje
+                    alert("Para continuar, toca la pantalla");
+                    document.body.addEventListener('touchstart', () => video.play(), { once: true });
+                });
+            }
+            
+            // Iniciar contador de 10 segundos
+            tiempoRestante = 10;
+            timerSpan.textContent = tiempoRestante;
+            
+            intervalo = setInterval(() => {
+                tiempoRestante--;
+                timerSpan.textContent = tiempoRestante;
+                
+                if (tiempoRestante <= 0) {
+                    clearInterval(intervalo);
+                    // Detener video
+                    video.pause();
+                    video.currentTime = 0;
+                    // Finalizar
+                    finalizar();
+                }
+            }, 1000);
+            
+            // También si el video termina antes, esperamos igual los 10s
+            video.addEventListener('ended', () => {
+                if (!videoTerminado) {
+                    videoTerminado = true;
+                    // No hacemos nada, solo esperamos que termine el contador
+                }
+            });
+        }
+        
+        function finalizar() {
+            overlayEspera.classList.add('hidden');
+            // Mostrar mensaje final
+            const mensajeFinal = document.createElement('div');
+            mensajeFinal.style.position = 'fixed';
+            mensajeFinal.style.top = '50%';
+            mensajeFinal.style.left = '50%';
+            mensajeFinal.style.transform = 'translate(-50%, -50%)';
+            mensajeFinal.style.background = 'rgba(0,0,0,0.9)';
+            mensajeFinal.style.color = 'white';
+            mensajeFinal.style.padding = '30px';
+            mensajeFinal.style.borderRadius = '20px';
+            mensajeFinal.style.textAlign = 'center';
+            mensajeFinal.style.zIndex = '2000';
+            mensajeFinal.style.fontSize = '1.5rem';
+            mensajeFinal.innerHTML = '✅ Tiempo completado ✅<br><br>Ya puedes continuar<br><br><button id="reiniciar" style="padding:10px 20px; margin-top:20px; background:#ff4444; border:none; border-radius:10px; color:white; font-size:1rem;">Cargar otro video</button>';
+            document.body.appendChild(mensajeFinal);
+            
+            document.getElementById('reiniciar')?.addEventListener('click', () => {
+                mensajeFinal.remove();
+                location.reload(); // Recargar para reiniciar el proceso
+            });
+        }
+        
+        // Evento del botón de inicio
+        startBtn.addEventListener('click', iniciarBloqueo);
+        
+        // Bloquear interacciones mientras se reproduce (evitar pausa)
+        video.addEventListener('play', () => {
+            // Forzar que no se pueda pausar con controles táctiles
+            video.addEventListener('pause', function evitarPausa() {
+                if (tiempoRestante > 0) {
+                    video.play();
+                }
+            });
+        });
+        
+        // Deshabilitar controles táctiles del video
+        video.addEventListener('touchstart', (e) => {
+            if (tiempoRestante > 0) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
